@@ -118,6 +118,42 @@ def product_id(product_name)
     product_id
 end
 
+def frequencies
+
+  frequencies = []
+  CSV.foreach('sales.csv', headers: true) do |row|
+    frequencies << row['invoice_frequency']
+  end
+
+  frequencies.uniq
+end
+
+def import_invoice_frequencies
+  db_connection do |conn|
+    frequencies.each do |frequency|
+
+      name = frequency
+
+      begin
+        conn.exec("INSERT INTO invoice_frequency (name) VALUES ($1)", [name])
+      rescue PG::UniqueViolation
+        puts "Duplicate entry. Skipping, #{name}."
+      end
+    end
+  end
+end
+
+def invoice_frequency_id(frequency)
+    invoice_frequency_id = nil
+    id = db_connection do |conn|
+      conn.exec("SELECT * FROM invoice_frequency WHERE name = '#{frequency}'");
+    end
+
+    invoice_frequency_id = id.first['id']
+    invoice_frequency_id
+end
+
+
 def import_transactions
   db_connection do |conn|
     CSV.foreach('sales.csv', headers: true) do |row|
@@ -125,16 +161,16 @@ def import_transactions
       employee = row['employee'].split("(").first.strip
       customer = row['customer_and_account_no'].split("(").first.strip
       product = row['product_name']
+      invoice_frequency = row['invoice_frequency']
       sale_date = row['sale_date']
       sale_amount = row['sale_amount']
       units_sold = row['units_sold']
       invoice_number = row['invoice_no']
-      invoice_frequency = row['invoice_frequency']
 
       begin
-        conn.exec("INSERT INTO transactions (sale_date, sale_amount, units_sold, invoice_number, invoice_frequency, product_id, employee_id, customer_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [sale_date, sale_amount, units_sold, invoice_number, invoice_frequency, "#{product_id(product)}", "#{employee_id(employee)}", "#{customer_id(customer)}"])
+        conn.exec("INSERT INTO transactions (sale_date, sale_amount, units_sold, invoice_number, invoice_frequency_id, product_id, employee_id, customer_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [sale_date, sale_amount, units_sold, invoice_number, "#{invoice_frequency_id(invoice_frequency)}", "#{product_id(product)}", "#{employee_id(employee)}", "#{customer_id(customer)}"])
       rescue PG::UniqueViolation
-        puts "Duplicate entry. Skipping, #{sale_date}, #{sale_amount}, #{units_sold}, #{invoice_number}, #{invoice_frequency}, #{product_id(product)}, #{employee_id(employee)}, #{customer_id(customer)}."
+        puts "Duplicate entry. Skipping, #{sale_date}, #{sale_amount}, #{units_sold}, #{invoice_number}, #{invoice_frequency_id(invoice_frequency)}, #{product_id(product)}, #{employee_id(employee)}, #{customer_id(customer)}."
       end
     end
   end
@@ -143,4 +179,5 @@ end
 import_employees
 import_customers
 import_products
+import_invoice_frequencies
 import_transactions
