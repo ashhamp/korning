@@ -29,7 +29,7 @@ CREATE TABLE transactions (
   sale_date VARCHAR(100),
   sale_amount VARCHAR(100),
   units_sold INT,
-  invoice_number INT,
+  invoice_number INT unique,
   invoice_frequency VARCHAR(50),
   product_id INT REFERENCES products (id),
   employee_id INT REFERENCES employees (id),

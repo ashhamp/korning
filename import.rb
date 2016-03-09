@@ -28,10 +28,13 @@ def import_employees
     db_connection do |conn|
       employees.each do |employee|
 
-    name = employee.split("(").first.strip
-    email = employee.split("(")[1].chop
-
-      conn.exec("INSERT INTO employees (name, email) VALUES ($1, $2)", [name, email])
+      name = employee.split("(").first.strip
+      email = employee.split("(")[1].chop
+      begin
+        conn.exec("INSERT INTO employees (name, email) VALUES ($1, $2)", [name, email])
+      rescue PG::UniqueViolation
+        puts "Duplicate entry. Skipping #{name}, #{email}."
+      end
     end
   end
 end
@@ -60,9 +63,12 @@ def import_customers
     customers.each do |customer|
 
       name = customer.split("(").first.strip
-       account_number = customer.split("(")[1].chop
-
-      conn.exec("INSERT INTO customers (name, account_number) VALUES ($1, $2)", [name, account_number])
+      account_number = customer.split("(")[1].chop
+      begin
+        conn.exec("INSERT INTO customers (name, account_number) VALUES ($1, $2)", [name, account_number])
+      rescue PG::UniqueViolation
+        puts "Duplicate entry. Skipping, #{name}, #{account_number}."
+      end
     end
   end
 end
@@ -93,7 +99,11 @@ def import_products
 
       name = product
 
-      conn.exec("INSERT INTO products (name) VALUES ($1)", [name])
+      begin
+        conn.exec("INSERT INTO products (name) VALUES ($1)", [name])
+      rescue PG::UniqueViolation
+        puts "Duplicate entry. Skipping, #{name}."
+      end
     end
   end
 end
@@ -121,7 +131,11 @@ def import_transactions
       invoice_number = row['invoice_no']
       invoice_frequency = row['invoice_frequency']
 
-      conn.exec("INSERT INTO transactions (sale_date, sale_amount, units_sold, invoice_number, invoice_frequency, product_id, employee_id, customer_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [sale_date, sale_amount, units_sold, invoice_number, invoice_frequency, "#{product_id(product)}", "#{employee_id(employee)}", "#{customer_id(customer)}"])
+      begin
+        conn.exec("INSERT INTO transactions (sale_date, sale_amount, units_sold, invoice_number, invoice_frequency, product_id, employee_id, customer_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [sale_date, sale_amount, units_sold, invoice_number, invoice_frequency, "#{product_id(product)}", "#{employee_id(employee)}", "#{customer_id(customer)}"])
+      rescue PG::UniqueViolation
+        puts "Duplicate entry. Skipping, #{sale_date}, #{sale_amount}, #{units_sold}, #{invoice_number}, #{invoice_frequency}, #{product_id(product)}, #{employee_id(employee)}, #{customer_id(customer)}."
+      end
     end
   end
 end
